@@ -2,6 +2,7 @@
 name = "secret-sharing"
 version = "0.1.0"
 edition = "2021"
+authors = ["Theodore Butler <theodusbutler@gmail.com>"]
 license = "MIT"
 
 [dependencies]

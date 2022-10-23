@@ -13,6 +13,12 @@ recover the data. The process for creating shares is as follows:
    bytes) using [Shamir Secret Sharing](https://dsprenkels.github.io/sss/#introduction)
 5. Each secret key share is prepended to the encrypted payload
 
+## Installation
+
+```bash
+cargo install --git https://github.com/theodus/secret-sharing
+```
+
 ## Example Usage
 
 - `secret-sharing create 3 2 <data.txt` produces 3 secret shares of the content of `data.txt`,

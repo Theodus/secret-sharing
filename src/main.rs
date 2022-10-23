@@ -7,13 +7,12 @@ use clap::{self, Parser as _};
 use rand::rngs::OsRng;
 use std::{
     env::args_os,
-    ffi::OsString,
     io::{stdin, Read},
 };
 
 #[derive(clap::Parser)]
 #[command(author, version, about, long_about = None, propagate_version = true)]
-struct CLI {
+struct Opt {
     #[command(subcommand)]
     command: Commands,
 }
@@ -33,19 +32,15 @@ enum Commands {
 
 fn main() -> Result<()> {
     let mut input = String::new();
+    let opt = Opt::parse_from(args_os());
     stdin().read_to_string(&mut input)?;
-    let output = run(args_os(), input)?;
+    let output = run(opt, input)?;
     println!("{}", output);
     Ok(())
 }
 
-fn run<I, T>(args: I, input: String) -> Result<String>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    let cli = CLI::parse_from(args);
-    match &cli.command {
+fn run(opt: Opt, input: String) -> Result<String> {
+    match &opt.command {
         &Commands::Create { n, k } => Ok(create_shares(n, k, input.as_bytes())?
             .into_iter()
             .map(hex::encode)
@@ -106,13 +101,17 @@ fn test() {
     use std::ops::Deref;
 
     let plaintext = "yup";
-    let shares = run(["self", "create", "3", "2"], plaintext.into()).unwrap();
+    let shares = run(
+        Opt::parse_from(["self", "create", "3", "2"]),
+        plaintext.into(),
+    )
+    .unwrap();
     let shares = shares.split_terminator('\n').collect::<Vec<&str>>();
     let subset = shares
         .choose_multiple(&mut thread_rng(), 2)
         .map(Deref::deref)
         .collect::<Vec<&str>>()
         .join("\n");
-    let result = run(["self", "combine"], subset).unwrap();
+    let result = run(Opt::parse_from(["self", "combine"]), subset).unwrap();
     assert_eq!(result, plaintext);
 }

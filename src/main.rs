@@ -68,9 +68,10 @@ fn create_shares(n: u8, k: u8, data: &[u8]) -> Result<Vec<Vec<u8>>> {
     share_data[..32].copy_from_slice(&key);
     let mut shares = shamirsecretsharing::create_shares(&share_data, n, k)?;
 
+    let compressed = zstd::stream::encode_all(data, 0).unwrap();
     let cipher = ChaCha20Poly1305::new(&key);
     let nonce = [0u8; 12];
-    let ciphertext = cipher.encrypt(&nonce.into(), data).unwrap();
+    let ciphertext = cipher.encrypt(&nonce.into(), &*compressed).unwrap();
 
     for share in &mut shares {
         share.extend_from_slice(&ciphertext);
@@ -94,8 +95,9 @@ fn combine_shares(shares: &[Vec<u8>]) -> Result<Vec<u8>> {
     let cipher = ChaCha20Poly1305::new(key[..32].into());
     let nonce = [0u8; 12];
     let plaintext = cipher.decrypt(&nonce.into(), ciphertext).unwrap();
+    let decompressed = zstd::stream::decode_all(&*plaintext).unwrap();
 
-    Ok(plaintext)
+    Ok(decompressed)
 }
 
 #[test]

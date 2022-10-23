@@ -10,3 +10,4 @@ clap = { version = "4.0", features = ["derive"] }
 hex = "0.4"
 rand = "0.8"
 shamirsecretsharing = "0.1"
+zstd = "0.11"

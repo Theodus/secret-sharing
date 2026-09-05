@@ -1,10 +1,9 @@
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context as _, Result};
 use chacha20poly1305::{
-    aead::{Aead as _, KeyInit as _},
+    aead::{Aead as _, Generate as _, Key, KeyInit as _},
     ChaCha20Poly1305,
 };
 use clap::{self, Parser as _};
-use rand::rngs::OsRng;
 use std::{
     env::args_os,
     io::{stdin, Read},
@@ -57,7 +56,7 @@ fn run(opt: Opt, input: String) -> Result<String> {
 }
 
 fn create_shares(n: u8, k: u8, data: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let key = ChaCha20Poly1305::generate_key(&mut OsRng);
+    let key = Key::<ChaCha20Poly1305>::generate();
 
     let mut share_data = [0u8; shamirsecretsharing::DATA_SIZE];
     share_data[..32].copy_from_slice(&key);
@@ -80,14 +79,15 @@ fn combine_shares(shares: &[Vec<u8>]) -> Result<Vec<u8>> {
         .iter()
         .map(|s| s[..shamirsecretsharing::SHARE_SIZE].to_vec())
         .collect::<Vec<Vec<u8>>>();
-    let key = shamirsecretsharing::combine_shares(&share_data)?.unwrap();
+    let key = shamirsecretsharing::combine_shares(&share_data)?
+        .context("failed to restore secret (not enough or incompatible shares)")?;
 
     let ciphertext = &shares[0][shamirsecretsharing::SHARE_SIZE..];
     ensure!(shares
         .iter()
         .all(|s| &s[shamirsecretsharing::SHARE_SIZE..] == ciphertext));
 
-    let cipher = ChaCha20Poly1305::new(key[..32].into());
+    let cipher = ChaCha20Poly1305::new(&Key::<ChaCha20Poly1305>::try_from(&key[..32])?);
     let nonce = [0u8; 12];
     let plaintext = cipher.decrypt(&nonce.into(), ciphertext).unwrap();
     let decompressed = zstd::stream::decode_all(&*plaintext).unwrap();
@@ -97,7 +97,7 @@ fn combine_shares(shares: &[Vec<u8>]) -> Result<Vec<u8>> {
 
 #[test]
 fn test() {
-    use rand::{seq::SliceRandom as _, thread_rng};
+    use rand::{rng, seq::IndexedRandom as _};
     use std::ops::Deref;
 
     let plaintext = "yup";
@@ -108,7 +108,7 @@ fn test() {
     .unwrap();
     let shares = shares.split_terminator('\n').collect::<Vec<&str>>();
     let subset = shares
-        .choose_multiple(&mut thread_rng(), 2)
+        .sample(&mut rng(), 2)
         .map(Deref::deref)
         .collect::<Vec<&str>>()
         .join("\n");

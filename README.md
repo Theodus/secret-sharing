@@ -23,5 +23,5 @@ cargo install --git https://github.com/theodus/secret-sharing
 
 - `secret-sharing create 3 2 <data.txt` produces 3 secret shares of the content of `data.txt`,
   where 2 of the shares are required to recover the content of `data.txt`
-- `secret-sharing combine <share1.hex <share2.hex` recovers 2 shares into the secret data, assuming
+- `cat share1.hex share2.hex | secret-sharing combine` recovers 2 shares into the secret data, assuming
   the shares were created with `k=2`
